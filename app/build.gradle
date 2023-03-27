@@ -1,45 +1,165 @@
 plugins {
     id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
+    id 'kotlin-android'
+    id 'kotlin-kapt'
+    id 'com.google.firebase.crashlytics'
+    id 'com.google.gms.google-services'
+    id 'com.google.firebase.firebase-perf'
+    id 'kotlin-parcelize'
+    id 'com.google.firebase.appdistribution'
 }
 
 android {
-    namespace 'com.test.reviewpad'
-    compileSdk 32
+    compileSdkVersion rootProject.compileSdkVersion
+
+    buildFeatures {
+        viewBinding = true
+    }
+
+    lintOptions {
+        abortOnError false
+        checkDependencies true
+    }
+
+    configurations {
+        all {
+            exclude group: 'org.json', module: 'json'
+        }
+    }
 
     defaultConfig {
-        applicationId "com.test.reviewpad"
-        minSdk 21
-        targetSdk 32
-        versionCode 1
-        versionName "1.0"
-
+        applicationId "fr.wemoms"
+        minSdkVersion rootProject.minSdkVersion
+        targetSdkVersion rootProject.targetSdkVersion
+        versionCode 37502
+        versionName getVersionName("3.75.02")
+        vectorDrawables.useSupportLibrary = true
+        multiDexEnabled true
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        production {
+            storeFile file('wemoms.jks')
+            keyAlias 'wemoms'
+            storePassword "wemoms2015"
+            keyPassword "wemoms2015"
+        }
     }
 
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles
-                    getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro', 'proguard-fresco.pro'
+            signingConfig signingConfigs.production
+            resValue "string", "google_maps_api_key", "AIzaSyCIMxzfRX6mLX4DQRkKnms9sLg2RIuf6P8"
+            resValue "string", "revenue_cat_public_sdk_key", "NkNyeulquopPcrYvhgjuOKbVLcewnYEJ"
+
+            firebaseAppDistribution {
+                artifactType="APK"
+                releaseNotesFile="./changelog.txt"
+                groups="wemoms, wemoms---product-team"
+                serviceCredentialsFile="$rootDir/firebase-app-distribution-credentials.json"
+            }
+        }
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix ".debug"
+            if (enableMinify()) {
+                proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro', 'proguard-fresco.pro'
+                minifyEnabled true
+                shrinkResources true
+            }
+            ext.enableCrashlytics = true
+            resValue "string", "google_maps_api_key", "AIzaSyCv6hTNIu9Q_QRxiJYIr_k1u-O83Cdc1qk"
+            resValue "string", "revenue_cat_public_sdk_key", "NkNyeulquopPcrYvhgjuOKbVLcewnYEJ"
+
+            firebaseAppDistribution {
+                artifactType="APK"
+                releaseNotesFile="./changelog.txt"
+                groups="wemoms-technical-team"
+                serviceCredentialsFile="$rootDir/preprod-firebase-app-distribution-credentials.json"
+            }
+        }
+        appium {
+            initWith release
+            matchingFallbacks = ['release']
+            debuggable = true
         }
     }
+    packagingOptions {
+        resources {
+            excludes +=
+                    ['META-INF/DEPENDENCIES', 'META-INF/NOTICE', 'META-INF/LICENSE', 'META-INF/LICENSE.txt', 'META-INF/NOTICE.txt', 'META-INF/rxjava.properties', 'META-INF/app_debug.kotlin_module', 'META-INF/app_release.kotlin_module']
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = JavaVersion.VERSION_1_8.toString()
     }
+    namespace 'fr.wemoms'
+
+    testOptions {
+        execution 'ANDROIDX_TEST_ORCHESTRATOR'
+
+        unitTests.all {
+            useJUnitPlatform()
+        }
+        animationsDisabled = true
+    }
+
+}
+
+def enableMinify() {
+    def value = project.getProperties().get("enableMinify")
+    return value != null ? value.toBoolean() : false
+}
+
+
+def getVersionName(String defaultValue) {
+    def value = project.getProperties().get("versionName")
+    return value != null ? value.toString() : defaultValue
 }
 
 dependencies {
 
-    implementation 'androidx.core:core-ktx:1.7.0'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.8.0'
+    // AndroidX
+    implementation 'androidx.appcompat:appcompat:1.4.2'
+    implementation 'com.google.android.material:material:1.6.1'
+    implementation 'androidx.recyclerview:recyclerview:1.2.1'
+    implementation 'androidx.cardview:cardview:1.0.0'
+    implementation 'androidx.dynamicanimation:dynamicanimation:1.0.0'
+    implementation 'androidx.palette:palette-ktx:1.0.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    testImplementation 'junit:junit:4.13.2'
+    implementation 'androidx.core:core-ktx:1.8.0'
+    implementation 'androidx.lifecycle:lifecycle-process:2.5.1'
+    implementation 'androidx.vectordrawable:vectordrawable:1.1.0'
+    implementation 'androidx.navigation:navigation-ui-ktx:2.4.2'
+    implementation 'androidx.navigation:navigation-fragment-ktx:2.4.2'
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+    // koin
+    implementation "io.insert-koin:koin-core:3.2.0"
+    implementation "io.insert-koin:koin-android:3.2.0"
+
+    // Kotlin
+    def lifecycle_version = "2.4.1"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.2"
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:$lifecycle_version"
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.5.2'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+
+    testImplementation 'org.mockito:mockito-core:3.8.0'
+    testImplementation 'com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0'
+
 }
